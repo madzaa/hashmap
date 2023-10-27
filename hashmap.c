@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STARTING_BUCKETS 8
 #define MAX_KEY_SIZE 10 // TODO remove this constraint
@@ -47,7 +48,7 @@ node addNode(node head, char *key, void **value)
 
 typedef struct Hashmap
 {
-  node **items;
+  node *items;
   int capacity;
   int count;
 } Hashmap;
@@ -77,12 +78,16 @@ void *Hashmap_get(Hashmap *h, char *key)
   int index = hashCode(key, h);
   node p = h->items[index];
   {
-    while (p->next != NULL)
+    while (p != NULL)
     {
-      p = p->next;
+      if (strcmp(p->key,key) == 0)
+      {
+        return p->value;
+      }
+      p->next;
     }
   }
-  return p->value;
+  return NULL;
 }
 
 void *Hashmap_set(Hashmap *h, char *key, void *value)
@@ -94,6 +99,7 @@ void *Hashmap_set(Hashmap *h, char *key, void *value)
   }
 
   int index = hashCode(key, h);
+  int updateCount = 0;
   node p = h->items[index];
   if (p == NULL)
   {
@@ -101,11 +107,19 @@ void *Hashmap_set(Hashmap *h, char *key, void *value)
   }
   else
   {
-    while (p->next != NULL)
+    while (p != NULL)
     {
+      if (strcmp(p->key,key)==0)
+      {
+        p->value = value;
+        updateCount++;
+      }
       p = p->next;
     }
-    h->items[index] = addNode(p, key, value);
+    if (updateCount == 0)
+    {
+      h->items[index] = addNode(p,key,value);
+    }
   }
   h->count++;
 }
@@ -119,16 +133,25 @@ void *Hashmap_delete(Hashmap *h, char *key)
 {
   int index = hashCode(key, h);
   node p = h->items[index];
+  node tempNode = NULL;
+  
+  while (p != NULL)
   {
-    while (p->next != NULL)
+    if (strcmp(p->key,key)==0)
     {
-      p->key = NULL;
-      p->value = NULL;
-      p = p->next;
+      if (tempNode == NULL)
+      {
+        h->items[index] = p->next;
+      } else {
+        tempNode->next = p->next;
+      }
+      free(p);
+      break;
     }
-    p->key = NULL;
-    p->value = NULL;
+    tempNode = p;
+    p = p->next;
   }
+return NULL;
 }
 
 int main()
@@ -146,9 +169,12 @@ int main()
   // using the same key should override the previous value
   int c = 20;
   Hashmap_set(h, "item a", &c);
+  
   assert(Hashmap_get(h, "item a") == &c);
   // basic delete functionality
+  
   Hashmap_delete(h, "item a");
+  Hashmap_get(h, "item a");
   assert(Hashmap_get(h, "item a") == NULL);
   
 
@@ -165,8 +191,11 @@ int main()
   for (i = 0; i < n; i++)
   {
     sprintf(key, "item %d", i);
+    printf("%s, \n", key);
+    printf("%s, \n", Hashmap_get(h, key) == &ns[i] ? "true":"false");
     assert(Hashmap_get(h, key) == &ns[i]);
   }
+  
 /*
       Hashmap_free(h);
       /*
